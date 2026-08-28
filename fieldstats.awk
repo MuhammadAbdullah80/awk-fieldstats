@@ -55,6 +55,23 @@ function fmt(x) {
 
 BEGIN {
     if (header == "") header = 0
+
+    # Which percentiles to report. p95 alone answers "how bad is the tail", but
+    # not "how bad is the tail compared to typical", which needs p50 beside it
+    # and p99 beyond it.
+    if (pct == "") pct = "95"
+    n_pct = split(pct, pct_list, ",")
+    for (i = 1; i <= n_pct; i++) {
+        p = pct_list[i] + 0
+        if (p <= 0 || p >= 100) {
+            printf "fieldstats: percentile %s is not between 0 and 100\n", pct_list[i] > "/dev/stderr"
+            # `exit` from BEGIN still runs END, so without this flag the END
+            # block would append a second, misleading "no data rows" error.
+            aborted = 1
+            exit 1
+        }
+        pct_value[i] = p
+    }
     if (cols != "") {
         n_wanted = split(cols, wanted_list, ",")
         for (i = 1; i <= n_wanted; i++) wanted[wanted_list[i] + 0] = 1
@@ -105,6 +122,8 @@ NR == 1 && header {
 }
 
 END {
+    if (aborted) exit 1
+
     if (NR == 0 || (header && NR == 1)) {
         print "fieldstats: no data rows" > "/dev/stderr"
         exit 1
@@ -141,7 +160,12 @@ END {
                 label, n, blank[i] + 0, fmt(min[i]), fmt(max[i]), \
                 fmt(mean), fmt(sd), fmt(quantile(sorted, n, 0.5))
 
-            if (n > 1) p95[i] = quantile(sorted, n, 0.95)
+            if (n > 1) {
+                for (k = 1; k <= n_pct; k++) {
+                    pctile[i, k] = quantile(sorted, n, pct_value[k] / 100)
+                }
+                has_pct[i] = 1
+            }
             has_numeric = 1
             for (k = 1; k <= n; k++) delete sorted[k]
         } else {
@@ -162,12 +186,18 @@ END {
     }
 
     if (has_numeric) {
-        printf "\n%-14s %10s\n", "column", "p95"
+        printf "\n%-14s", "column"
+        for (k = 1; k <= n_pct; k++) printf " %9s", "p" pct_list[k]
+        printf "\n"
+
         for (i = 1; i <= ncol; i++) {
             if (restrict && !(i in wanted)) continue
-            if (!(i in p95)) continue
+            if (!(i in has_pct)) continue
             label = (i in name) ? name[i] : ("col" i)
-            printf "%-14s %10s\n", label, fmt(p95[i])
+            if (length(label) > 14) label = substr(label, 1, 13) "~"
+            printf "%-14s", label
+            for (k = 1; k <= n_pct; k++) printf " %9s", fmt(pctile[i, k])
+            printf "\n"
         }
     }
 

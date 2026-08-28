@@ -28,6 +28,7 @@ awk -f fieldstats.awk [-v FS=,] [-v header=1] [-v cols=2,5] FILE...
 | `FS` | Field separator. awk's default (runs of whitespace) if unset. |
 | `header` | `1` treats the first row as column names. |
 | `cols` | Comma-separated column numbers to restrict the report to. |
+| `pct` | Comma-separated percentiles to report. Defaults to `95`. |
 
 Reads stdin when no file is given. Exits non-zero if there are no data rows, so
 it fails loudly in a pipeline rather than printing an empty table.
@@ -35,7 +36,18 @@ it fails loudly in a pipeline rather than printing an empty table.
 ## What it reports
 
 For a column where **every** non-blank cell parses as a number: count, blanks,
-min, max, mean, sample standard deviation (n-1), median, and p95.
+min, max, mean, sample standard deviation (n-1), median, and the requested
+percentiles (p95 by default).
+
+```
+$ awk -f fieldstats.awk -v pct=50,90,99 latencies.txt
+...
+column               p50       p90       p99
+col1                 5.5       9.1      9.91
+```
+
+p95 on its own answers "how bad is the tail" but not "how bad compared to
+typical", which needs p50 beside it.
 
 For anything else: count, blanks, and either the number of distinct values or —
 if the column is *mostly* numeric — how the cells split. That last case is the
@@ -79,7 +91,7 @@ bash test/run.sh
 AWK=mawk bash test/run.sh
 ```
 
-32 checks. CI runs them under both gawk and mawk.
+47 checks. CI runs them under both gawk and mawk.
 
 ## License
 
