@@ -7,7 +7,9 @@
 # that reports failures on stdout but still exits 0.
 set -u
 
-AWK="${AWK:-awk}"
+# AWK may name a command with arguments ("busybox awk"), so split it into words
+# rather than quoting it as a single executable name.
+read -r -a AWK_CMD <<< "${AWK:-awk}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 PROG="${HERE}/../fieldstats.awk"
 
@@ -17,7 +19,7 @@ failed=0
 run() {
 	local input="$1"
 	shift
-	printf '%b' "$input" | "$AWK" -f "$PROG" "$@" 2>&1
+	printf '%b' "$input" | "${AWK_CMD[@]}" -f "$PROG" "$@" 2>&1
 }
 
 # expect NAME INPUT WANTED [awk-args...]
