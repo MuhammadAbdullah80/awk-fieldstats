@@ -98,6 +98,33 @@ expect 'FS selects the delimiter' 'a,b\n1,2\n' 'col2' -v FS=,
 expect 'cols restricts to one column' 'x,y,z\n1,2,3\n4,5,6\n' 'y' -v FS=, -v header=1 -v cols=2
 reject 'cols excludes the others' 'x,y,z\n1,2,3\n4,5,6\n' 'z' -v FS=, -v header=1 -v cols=2
 
+# --- selecting columns by name ---------------------------------------------
+
+NAMED='name,latency,status\nada,100,200\nbob,300,404\n'
+
+expect 'a column can be named' "$NAMED" 'latency' -v FS=, -v header=1 -v cols=latency
+reject 'and the others are excluded' "$NAMED" 'status' -v FS=, -v header=1 -v cols=latency
+expect 'numbers still work' "$NAMED" 'latency' -v FS=, -v header=1 -v cols=2
+expect 'names and numbers can be mixed' "$NAMED" 'status' -v FS=, -v header=1 -v cols=name,3
+expect 'and the mix keeps both' "$NAMED" 'name' -v FS=, -v header=1 -v cols=name,3
+expect 'surrounding space in a name is trimmed' "$NAMED" 'latency' -v FS=, -v header=1 -v 'cols= latency '
+
+expect 'an unknown name is rejected' "$NAMED" 'no column named nope' -v FS=, -v header=1 -v cols=nope
+expect 'a name without a header explains itself' '1,2\n' 'names need -v header=1' -v FS=, -v cols=latency
+expect 'an out-of-range number is rejected' '1,2\n' 'column 9 is out of range (1-2)' -v FS=, -v cols=9
+expect 'column 0 is rejected' '1,2\n' 'out of range' -v FS=, -v cols=0
+
+# Previously an out-of-range number was silently ignored, producing an empty
+# table rather than an error.
+reject 'a rejected column reports one error, not two' '1,2\n' 'no data rows' -v FS=, -v cols=9
+
+if run "$NAMED" -v FS=, -v header=1 -v cols=nope >/dev/null 2>&1; then
+	failed=$((failed + 1))
+	printf 'FAIL an unknown column should exit non-zero\n'
+else
+	passed=$((passed + 1))
+fi
+
 # --- percentiles -----------------------------------------------------------
 
 TEN='1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n'

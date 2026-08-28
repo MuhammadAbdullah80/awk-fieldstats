@@ -73,20 +73,67 @@ BEGIN {
         pct_value[i] = p
     }
     if (cols != "") {
+        # Resolution is deferred to the header line, because a name cannot be
+        # turned into an index until the header has been read. Numbers are
+        # resolved there too, so both kinds report an out-of-range column the
+        # same way instead of one failing loudly and the other silently.
         n_wanted = split(cols, wanted_list, ",")
-        for (i = 1; i <= n_wanted; i++) wanted[wanted_list[i] + 0] = 1
         restrict = 1
     }
     ncol = 0
 }
 
 NR == 1 && header {
-    for (i = 1; i <= NF; i++) name[i] = $i
+    for (i = 1; i <= NF; i++) {
+        name[i] = $i
+        index_of[$i] = i
+    }
     ncol = NF
+    resolve_wanted(NF)
     next
 }
 
+# Turns each entry of `cols` into a column index. A bare integer is taken as an
+# index; anything else is looked up in the header. Called from the header rule
+# when there is one, and from the first data row when there is not.
+function resolve_wanted(fields,    j, token, idx) {
+    if (!restrict || resolved) return
+    resolved = 1
+
+    for (j = 1; j <= n_wanted; j++) {
+        token = wanted_list[j]
+        gsub(/^[ \t]+|[ \t]+$/, "", token)
+
+        if (token ~ /^[0-9]+$/) {
+            idx = token + 0
+        }
+        else if (token in index_of) {
+            idx = index_of[token]
+        }
+        else if (header) {
+            printf "fieldstats: no column named %s\n", token > "/dev/stderr"
+            aborted = 1
+            exit 1
+        }
+        else {
+            printf "fieldstats: %s is not a column number (names need -v header=1)\n", \
+                token > "/dev/stderr"
+            aborted = 1
+            exit 1
+        }
+
+        if (idx < 1 || idx > fields) {
+            printf "fieldstats: column %d is out of range (1-%d)\n", idx, fields > "/dev/stderr"
+            aborted = 1
+            exit 1
+        }
+        wanted[idx] = 1
+    }
+}
+
 {
+    resolve_wanted(NF)
+
     # A wholly empty line has no fields at all under the default FS, so it can
     # neither be counted as data nor attributed to any column. Count it and say
     # so, rather than letting rows vanish between NR and the per-column counts.
