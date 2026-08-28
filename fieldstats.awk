@@ -8,9 +8,12 @@
 #
 # Reports count, min, max, mean, stddev, median and p95 for every column that
 # holds numbers, and count plus distinct-value count for every column that does
-# not. Written against POSIX awk - no gawk extensions - so it runs under mawk,
-# busybox awk and gawk alike. That rules out asort(), hence the hand-written
-# sort below.
+# not. Written against POSIX awk - no gawk extensions - so it runs under mawk
+# and gawk alike. That rules out asort(), hence the hand-written sort below.
+#
+# It does use sqrt(), which busybox awk as packaged by Debian and Ubuntu does
+# not have ("Math support is not compiled in"). Everything except stddev works
+# there; the stddev line is what fails.
 
 function is_number(s) {
     # A leading + or -, digits with at most one dot, an optional exponent.

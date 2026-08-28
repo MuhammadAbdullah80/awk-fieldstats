@@ -66,7 +66,11 @@ subset that happened to parse, the column degrades and says why.
 - **Percentiles interpolate** between order statistics, matching the convention
   most spreadsheets use.
 - **No gawk extensions.** No `asort()`, hence the hand-written insertion sort.
-  Runs under mawk, busybox awk and gawk.
+  Runs under gawk and mawk.
+
+One portability limit worth stating: the script calls `sqrt()`, which busybox
+awk as packaged by Debian and Ubuntu does not provide - it reports "Math support
+is not compiled in". Everything except the stddev column works there.
 
 ## Tests
 
@@ -75,7 +79,7 @@ bash test/run.sh
 AWK=mawk bash test/run.sh
 ```
 
-32 checks. CI runs them under gawk, mawk and busybox awk.
+32 checks. CI runs them under both gawk and mawk.
 
 ## License
 

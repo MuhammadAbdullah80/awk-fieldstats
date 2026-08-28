@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        awk: [gawk, mawk, busybox-awk]
+        awk: [gawk, mawk]
     steps:
       - uses: actions/checkout@v4
 
@@ -21,7 +21,6 @@ jobs:
           case "${{ matrix.awk }}" in
             gawk)        sudo apt-get install -y gawk    ; echo "AWK=gawk"       >> "$GITHUB_ENV" ;;
             mawk)        sudo apt-get install -y mawk    ; echo "AWK=mawk"       >> "$GITHUB_ENV" ;;
-            busybox-awk) sudo apt-get install -y busybox ; echo "AWK=busybox awk" >> "$GITHUB_ENV" ;;
           esac
 
       - name: Run the test suite
