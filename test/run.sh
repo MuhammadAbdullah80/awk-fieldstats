@@ -98,6 +98,36 @@ expect 'FS selects the delimiter' 'a,b\n1,2\n' 'col2' -v FS=,
 expect 'cols restricts to one column' 'x,y,z\n1,2,3\n4,5,6\n' 'y' -v FS=, -v header=1 -v cols=2
 reject 'cols excludes the others' 'x,y,z\n1,2,3\n4,5,6\n' 'z' -v FS=, -v header=1 -v cols=2
 
+# --- percentiles -----------------------------------------------------------
+
+TEN='1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n'
+
+expect 'p95 is the default' "$TEN" 'p95'
+expect 'and its value is interpolated' "$TEN" '9.55'
+expect 'a single custom percentile' "$TEN" 'p50' -v pct=50
+reject 'which replaces the default' "$TEN" 'p95' -v pct=50
+expect 'several percentiles share a row' "$TEN" 'p50' -v pct=50,90,99
+expect 'and each gets a column' "$TEN" 'p99' -v pct=50,90,99
+expect 'p50 equals the median for this input' "$TEN" '5.5' -v pct=50
+expect 'a percentile below the first sample clamps' "$TEN" 'p1' -v pct=1
+expect 'a percentile near the top clamps' "$TEN" 'p99' -v pct=99
+
+expect 'a percentile of 0 is rejected' "$TEN" 'not between 0 and 100' -v pct=0
+expect 'a percentile of 100 is rejected' "$TEN" 'not between 0 and 100' -v pct=100
+expect 'a percentile above 100 is rejected' "$TEN" 'not between 0 and 100' -v pct=150
+expect 'a negative percentile is rejected' "$TEN" 'not between 0 and 100' -v pct=-5
+
+# `exit` inside BEGIN still runs END, so a rejected percentile used to print a
+# second, misleading "no data rows" line after the real error.
+reject 'a rejected percentile reports one error, not two' "$TEN" 'no data rows' -v pct=150
+
+if run "$TEN" -v pct=150 >/dev/null 2>&1; then
+	failed=$((failed + 1))
+	printf 'FAIL a rejected percentile should exit non-zero\n'
+else
+	passed=$((passed + 1))
+fi
+
 # --- errors ----------------------------------------------------------------
 
 expect 'empty input is an error, not an empty table' '' 'no data rows'
