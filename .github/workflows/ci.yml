@@ -1,0 +1,28 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        awk: [gawk, mawk, busybox-awk]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the awk under test
+        run: |
+          sudo apt-get update -qq
+          case "${{ matrix.awk }}" in
+            gawk)        sudo apt-get install -y gawk    ; echo "AWK=gawk"       >> "$GITHUB_ENV" ;;
+            mawk)        sudo apt-get install -y mawk    ; echo "AWK=mawk"       >> "$GITHUB_ENV" ;;
+            busybox-awk) sudo apt-get install -y busybox ; echo "AWK=busybox awk" >> "$GITHUB_ENV" ;;
+          esac
+
+      - name: Run the test suite
+        run: bash test/run.sh
