@@ -27,11 +27,20 @@ awk -f fieldstats.awk [-v FS=,] [-v header=1] [-v cols=2,5] FILE...
 | --- | --- |
 | `FS` | Field separator. awk's default (runs of whitespace) if unset. |
 | `header` | `1` treats the first row as column names. |
-| `cols` | Comma-separated column numbers to restrict the report to. |
+| `cols` | Comma-separated columns to restrict the report to: numbers, or names when `header=1`. |
 | `pct` | Comma-separated percentiles to report. Defaults to `95`. |
 
 Reads stdin when no file is given. Exits non-zero if there are no data rows, so
 it fails loudly in a pipeline rather than printing an empty table.
+
+With a header, columns can be selected by name:
+
+```
+awk -f fieldstats.awk -v FS=, -v header=1 -v cols=latency,status requests.csv
+```
+
+A name that is not in the header, or a number past the last column, is an error
+rather than a silently empty report.
 
 ## What it reports
 
@@ -91,7 +100,7 @@ bash test/run.sh
 AWK=mawk bash test/run.sh
 ```
 
-47 checks. CI runs them under both gawk and mawk.
+59 checks. CI runs them under both gawk and mawk.
 
 ## License
 
